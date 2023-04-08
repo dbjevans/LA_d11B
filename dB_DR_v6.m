@@ -51,7 +51,7 @@ end
 % all blocks in the same data file, with headers between each block. (Note 
 % 995 cycles/block was chosen as write errors can occur with longer blocks)
 % If no ratio data are calculated by the Neptune software, the file will
-% have seven columns. If ratio data are calculated and written (11 columnts),
+% have seven columns. If ratio data are calculated and written (11 columns),
 % comment/uncomment 'tempD' below as appropriate.
 %
 % In the case that this data file read is unapplicable to your system, the
@@ -60,8 +60,8 @@ end
 % 1) anTime - An n*1 matrix of time stamps, where n is equal to the number
 %   of rows of data. Date number format.
 % 2) RawData - An n*6 matrix of voltage data with the following columns:
-%   cycle number, m/z 9.95 voltage, m/z 10B voltage, m/z 10.035 voltage', m/z
-%   10.5 voltage, m/z 11B voltage. Not all of these voltages are used in
+%   cycle number, m/z 9.95 voltage, 10B voltage, m/z 10.035 voltage', m/z
+%   10.5 voltage, 11B voltage. Not all of these voltages are used in
 %   the calculations below (m/z 9.95 and 10.5 can be replaced by NaNs if
 %   this information was not collected).
 % 3) In addition, 'AnID' and 'AnOver' are metadata from the laser ablation
@@ -69,9 +69,11 @@ end
 %   function 'GeoStarData'.
 for j = 1:size(fidi,2)
     % use this line for 7 columns of data
-    tempD = textscan(fidi{1,j}, '%s%s%s%s%s%s%s%s', 'Delimiter','\t','HeaderLines',0, 'CollectOutput',1);
-    % use this line for 11 data columns
-    %tempD = textscan(fidi{1,j}, '%s%s%s%s%s%s%s%s%s%s%s', 'Delimiter','\t','HeaderLines',0, 'CollectOutput',1);
+    tempD = textscan(fidi{1,j}, '%s%s%s%s%s%s%s%s', 'Delimiter','\t',...
+        'HeaderLines',0, 'CollectOutput',1);
+    % Alternatively use this for 11 data columns
+    %tempD = textscan(fidi{1,j}, '%s%s%s%s%s%s%s%s%s%s%s', 'Delimiter',...
+    % '\t','HeaderLines',0, 'CollectOutput',1);
    
     anDate = tempD{1}{9,1};     % isolate date the file was written
     anDate = anDate(16:size(anDate,2));
