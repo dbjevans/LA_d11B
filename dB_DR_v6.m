@@ -27,7 +27,7 @@
 %   comment/uncomment lines 88 and 91 to read in (e.g.) an 11-column file.
 % 2) Five rows of data are thrown away at the start of the analysis
 %   (potential surface contamination) and four lines from the end (possible
-%   cell washout). See line 263.
+%   cell washout). See line 274.
 
 clear variables
 % Select files
@@ -98,7 +98,9 @@ for j = 1:size(fidi,2)
     time = cell(size(tempD{1},1),1);
     b = 0; a = 0;
     % Needs optimising...
+    w = waitbar(0,'Loading data file...');
     for i = 18:size(tempD{1},1)
+        waitbar(i/size(tempD{1},1),w)
         if b~=floor((i-17)/1024)    % if the block number changes
             a = 0;                  % reset the counter
         else
@@ -117,6 +119,7 @@ for j = 1:size(fidi,2)
         end
         b = floor((i-17)/1024); % block number
     end
+    close(w)
     
     % throw out emptry columns, 9 empty rows if the raw data files include
     % calculated ratios, otherwise there will be 6 empty rows
@@ -127,7 +130,7 @@ for j = 1:size(fidi,2)
     end
     timeOut{j,1} = time(~cellfun('isempty',time));
 end
-clearvars -EXCEPT RawData dirF anDate timeOut PathName FileName
+clearvars -EXCEPT RawData dirF anDate timeOut PathName FileName w
 
 
 for j = 1:size(RawData,1)   % delete empty rows if block stopped maually
@@ -146,7 +149,9 @@ for j = 1:size(timeOut,1)
     if ischar(timeOut{1,1}{1,:}) % if the data were exported with a datestring timestamp
         anTime{j,1} = NaN(size(timeOut{j,1},1),1);   % convert times to date numbers
         add = 0;
+        w = waitbar(0,'converting data...');
         for i = 1:size(timeOut{j,1},1)
+            waitbar(i/size(timeOut{j,1},1),w)
             t = timeOut{j,1}{i,1};
             t(1,20)='.';
             t(1,3) = '-';
@@ -160,7 +165,8 @@ for j = 1:size(timeOut,1)
                 anTime{j,1}(i,1) = datenum(t,'dd-mm-yyyy HH:MM:SS.FFF') + add;
             end
         end
-        clear a b t add
+        close(w)        
+        clear a b t add w
     else % else, if exported as unix format
         d = datetime(cell2mat(timeOut{j,1}),'ConvertFrom','epochtime','TicksPerSecond',1,'Format','dd-MMM-yyyy HH:mm:ss.SSS');
         anTime{j,1} = datenum(d);
@@ -205,11 +211,13 @@ if haveLog==1
     % between the two computers
     close(figure(1))
     figure(1)
-    plot(anTime(1:2000),RawData(1:2000,6))
+    plot(anTime(1:1000),RawData(1:1000,6))
+    title('select the start of the first analysis')
     set(gca,'yscale','log')
     set(gcf,'color','w')
     ylim([1e-4 0.5])
     gi = ginput(1);
+    figPos = get(gcf,'position');
     close(figure(1))
 
     % calculate time offset between PCs
@@ -233,6 +241,7 @@ if haveLog==1
             'facealpha',0.5)
     end
 %    axis([anTime(1) anTime(1000) ylim])
+    set(gcf,'position',figPos)
     drawnow
 %     check = 1;
 %     while check~=0
@@ -243,7 +252,7 @@ if haveLog==1
 %         end
 %     end
     checkOK = input('Did everything work? Enter 1 if so, or 0 to try manual data selection.');
-    close(figure(1))
+    %close(figure(1))
 
     if checkOK==1
         bg = cell(size(AnOver,1)+1,1);
@@ -666,8 +675,9 @@ if exist('AnOver','var')==1     % if log files were loaded
             % use this information to derive a correction line, and apply
             % it to the sample data
             cmap = parula(12);
-            close(figure(2))
-            figure(2)   % plot offset standard data
+            close(figure(j+1))
+            figure(j+1)   % plot offset standard data
+            title([num2str(AnOver(1,10)),' \mum spot data'])
             hold on
             set(gcf,'color','w')
             xlabel('11/10.089')
@@ -740,14 +750,14 @@ if exist('AnOver','var')==1     % if log files were loaded
                     out = input('want to delete more outliers? (1/0)');
                 end
                 clear tempX tempY tempXY xL a beta R J COVB MSE ypred delta gi beta0 p1 p2 upper lower
-                close(figure(2))
+                %close(figure(2))
                 
                 % Apply the resulting power function to the sample data
                 MBsamp(dataOver(:,3)>0,5) = mdl.Coefficients{1,1} + mdl.Coefficients{2,1}.*...
                     dataOver(dataOver(:,3)>0,3).^mdl.Coefficients{3,1};
                 MBsamp(:,6) = MBsamp(:,3) - MBsamp(:,5);
             catch
-                close(figure(2))
+                %close(figure(2))
     
                 MBsamp(dataOver(:,3)>0,5) = NaN;
                 MBsamp(:,6) = NaN;
