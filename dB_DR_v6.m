@@ -24,10 +24,10 @@
 % checked on your system before using this script:
 % 1) The script expects an 8-column Neptune exp data file. If you
 %   additionally export ratio data (or differ in any other way),
-%   comment/uncomment lines 72 and 74 to read in (e.g.) an 11-column file.
+%   comment/uncomment lines 88 and 91 to read in (e.g.) an 11-column file.
 % 2) Five rows of data are thrown away at the start of the analysis
 %   (potential surface contamination) and four lines from the end (possible
-%   cell washout). See line 247.
+%   cell washout). See line 263.
 
 clear variables
 % Select files
@@ -55,18 +55,34 @@ end
 % comment/uncomment 'tempD' below as appropriate.
 %
 % In the case that this data file read is unapplicable to your system, the
-% data processing part of the script requires the following matrices in the
+% data processing part of the script requires the following datasets in the
 % following formats:
-% 1) anTime - An n*1 matrix of time stamps, where n is equal to the number
-%   of rows of data. Date number format.
-% 2) RawData - An n*6 matrix of voltage data with the following columns:
+% 1) EITHER 
+%   RawData AND anTime
+%   RawData: An n*6 matrix of voltage data with the following columns:
 %   cycle number, m/z 9.95 voltage, 10B voltage, m/z 10.035 voltage', m/z
 %   10.5 voltage, 11B voltage. Not all of these voltages are used in
 %   the calculations below (m/z 9.95 and 10.5 can be replaced by NaNs if
-%   this information was not collected).
-% 3) In addition, 'AnID' and 'AnOver' are metadata from the laser ablation
+%   this information was not collected). 
+%   anTime: An n*1 matrix of time stamps, where n is equal to the number
+%   of rows of data. Date number format.
+%   [use this if you intend to supply a log file via GeoStarData to 
+%   determine the locations of the analyses but no MC-ICPMS data file]
+%
+%   OR
+%
+%   bg AND data
+%   An (n+1)*1 and n*1 cell array of separated background and
+%   sample data respectively, where each cell has the same column format as
+%   that described for 'RawData' above.
+%   [use this if your data are already separated into background and sample
+%   segments and thus do not require comparison to a laser log file (but
+%   note that full script functionality nonetheless later requires a log
+%   file, see #2)]   
+% 2) In addition, 'AnID' and 'AnOver' are metadata from the laser ablation
 %   system, which are later required for full functionality. See the
-%   function 'GeoStarData'.
+%   function 'GeoStarData' for formatting.
+
 for j = 1:size(fidi,2)
     % use this line for 7 columns of data
     tempD = textscan(fidi{1,j}, '%s%s%s%s%s%s%s%s', 'Delimiter','\t',...
@@ -197,7 +213,7 @@ if haveLog==1
     close(figure(1))
 
     % calculate time offset between PCs
-    loc = [[1:1:size(anTime,1)]' abs(anTime-gi(1))];
+    loc = [(1:1:size(anTime,1))' abs(anTime-gi(1))];
     loc = sortrows(loc,2);
     Toff = anTime(loc(1,1),1)-AnOver(1,1);
     clear gi
@@ -358,7 +374,7 @@ if haveLog~=1 || exist('checkOK','var') && checkOK==0      % if log files aren't
             h = 0;
             disp('you have a problematic spike in this region')
 
-            a = [[1:1:size(where,1)]' where NaN(size(where,1),1)];
+            a = [(1:1:size(where,1))' where NaN(size(where,1),1)];
             a(isnan(a(:,2)),:) = [];
             a(1:size(a,1)-1,3) = a(2:size(a,1),2) - a(1:size(a,1)-1,2);
             for i = 2:size(a,1)
@@ -491,8 +507,8 @@ dataOut = cell(size(data));
 for i = 1:size(tempMeanBG,1) % backgrounds (2SD)
     bgOut{i,1} = bg{i,1};
     for j = 1:size(tempMeanBG,2)
-        tempMeanBG(i,j,1) = nanmean(bg{i,1}(:,j+1));
-        tempMeanBG(i,j,2) = 2.*nanstd(bg{i,1}(:,j+1));
+        tempMeanBG(i,j,1) = mean(bg{i,1}(:,j+1),'omitnan');
+        tempMeanBG(i,j,2) = 2.*std(bg{i,1}(:,j+1),'omitnan');
         bgOut{i,1}(bg{i,1}(:,j+1)>tempMeanBG(i,j,1)+tempMeanBG(i,j,2) | ...
             bg{i,1}(:,j+1)<tempMeanBG(i,j,1)-tempMeanBG(i,j,2),:) = NaN;
     end
@@ -500,8 +516,8 @@ end
 for i = 1:size(tempMeanSamp,1)
     dataOut{i,1} = data{i,1};
     for j = 1:size(tempMeanBG,2) % samples (3SD)
-        tempMeanSamp(i,j,1) = nanmean(data{i,1}(:,j+1));
-        tempMeanSamp(i,j,2) = 3.*nanstd(data{i,1}(:,j+1));
+        tempMeanSamp(i,j,1) = mean(data{i,1}(:,j+1),'omitnan');
+        tempMeanSamp(i,j,2) = 3.*std(data{i,1}(:,j+1),'omitnan');
         dataOut{i,1}(data{i,1}(:,j+1)>tempMeanSamp(i,j,1)+tempMeanSamp(i,j,2) | ...
             data{i,1}(:,j+1)<tempMeanSamp(i,j,1)-tempMeanSamp(i,j,2),:) = NaN;
     end
@@ -674,17 +690,17 @@ if exist('AnOver','var')==1     % if log files were loaded
                 modelfun = @(b,x) b(1)+b(2).*x.^b(3);
                 beta0 = [50 -1000 -1];
                 mdl = fitnlm(tempX,tempY,modelfun,beta0);
-                p1 = plot([round(min(tempX),1):0.1:round(max(tempX),1)],...
+                p1 = plot((round(min(tempX),1):0.1:round(max(tempX),1)),...
                     mdl.Coefficients{1,1}+...
-                    mdl.Coefficients{2,1}.*[round(min(tempX),1):0.1:round(max(tempX),1)].^...
+                    mdl.Coefficients{2,1}.*(round(min(tempX),1):0.1:round(max(tempX),1)).^...
                     mdl.Coefficients{3,1},'-','color','k');
                 [beta,R,J,COVB,MSE] = nlinfit(tempX,tempY,modelfun,beta0);
                 [ypred,delta] = nlpredci(modelfun,...
-                    [round(min(tempX),1):0.1:round(max(tempX),1)],beta,R,'Covar',COVB,...
+                    (round(min(tempX),1):0.1:round(max(tempX),1)),beta,R,'Covar',COVB,...
                     'MSE',MSE,'SimOpt','off');
                 lower = ypred - delta;
                 upper = ypred + delta;
-                p2 = plot([round(min(tempX),1):0.1:round(max(tempX),1)],...
+                p2 = plot((round(min(tempX),1):0.1:round(max(tempX),1)),...
                     [lower;upper],'--','color','k','linewidth',0.5);
                 drawnow
     
@@ -707,17 +723,17 @@ if exist('AnOver','var')==1     % if log files were loaded
                     delete(p2)
                     % Recalculate model and replot
                     mdl = fitnlm(tempXY(:,1),tempXY(:,2),modelfun,beta0);
-                    p1 = plot([round(min(tempX),1):0.1:round(max(tempX),1)],...
+                    p1 = plot((round(min(tempX),1):0.1:round(max(tempX),1)),...
                         mdl.Coefficients{1,1}+...
-                        mdl.Coefficients{2,1}.*[round(min(tempX),1):0.1:round(max(tempX),1)].^...
+                        mdl.Coefficients{2,1}.*(round(min(tempX),1):0.1:round(max(tempX),1)).^...
                         mdl.Coefficients{3,1},'-','color','k');
                     [beta,R,J,COVB,MSE] = nlinfit(tempXY(:,1),tempXY(:,2),modelfun,beta0);
                     [ypred,delta] = nlpredci(modelfun,...
-                        [round(min(tempX),1):0.1:round(max(tempX),1)],beta,R,'Covar',COVB,...
+                        (round(min(tempX),1):0.1:round(max(tempX),1)),beta,R,'Covar',COVB,...
                         'MSE',MSE,'SimOpt','on');
                     lower = ypred - delta;
                     upper = ypred + delta;
-                    p2 = plot([round(min(tempX),1):0.1:round(max(tempX),1)],...
+                    p2 = plot((round(min(tempX),1):0.1:round(max(tempX),1)),...
                         [lower;upper],'--','color','k','linewidth',0.5);
                     drawnow
     
