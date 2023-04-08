@@ -27,7 +27,7 @@
 %   comment/uncomment lines 72 and 74 to read in (e.g.) an 11-column file.
 % 2) Five rows of data are thrown away at the start of the analysis
 %   (potential surface contamination) and four lines from the end (possible
-%   cell washout). See line 246.
+%   cell washout). See line 247.
 
 clear variables
 % Select files
@@ -81,6 +81,7 @@ for j = 1:size(fidi,2)
     RawData{j,1} = NaN(size(tempD{1},1),size(tempD{1},2)-2);
     time = cell(size(tempD{1},1),1);
     b = 0; a = 0;
+    % Needs optimising...
     for i = 18:size(tempD{1},1)
         if b~=floor((i-17)/1024)    % if the block number changes
             a = 0;                  % reset the counter
@@ -101,7 +102,7 @@ for j = 1:size(fidi,2)
         b = floor((i-17)/1024); % block number
     end
     
-    % throw out emptry rows, 9 empty rows if the raw data files include
+    % throw out emptry columns, 9 empty rows if the raw data files include
     % calculated ratios, otherwise there will be 6 empty rows
     if size(RawData{j,1},2)==9
         RawData{j,1} = RawData{j,1}(sum(isnan(RawData{j,1}),2)~=9,:);
