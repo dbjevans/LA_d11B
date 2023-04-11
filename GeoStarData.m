@@ -17,14 +17,16 @@ function [AnID,AnOver] = GeoStarData(dirName)
 % 11 - He MFC flow rate
 % 12 - N2 MFC flow rate
 %
-% NOTE: analyses shorter than 10 s are deleted, as these probably reflect
+% NOTE: analyses shorter than 5 s are deleted, as these probably reflect
 % samples that were manually stopped and restarted during analysis. If your
-% sequence contains real analyses shorter than 10 s then the value on line
-% 445 should be changed.
+% sequence contains real analyses shorter than 5 s then the value on line
+% 459 needs to be changed.
 
 
 [FileName,PathName] = ...
     uigetfile('*.csv','select all log files',dirName,'MultiSelect','on');
+%cd(PathName)
+
 
 if ischar(FileName)
     fileList{1,1} = [PathName,FileName];
@@ -35,7 +37,9 @@ else
     end
 end
 
-SumLogSum = size(fileList,2);        % Number of log files
+
+
+SumLogSum = size(fileList,2);        % Amount of log files
 ACSV = cell(1,SumLogSum);
 FID = nan(1,size(fileList,2));
 for i = 1:size(fileList,1)        % Load all log files
@@ -155,7 +159,7 @@ else
         LaserRep SpotSize MFC1 MFC2];
 
     A = SepLog{1}{1}(5);            % Analysis Sequence
-    AnID = char(A{1});
+    AnID = char(A{1});          %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     for i = 2:size(SepLog,2)
         if size(SepLog{i}{1},1)<17
             AnID = AnID;
@@ -442,29 +446,37 @@ for i = 1:size(AnSep,2)
     end
 end
 
-AnOver = AnOver(~isnan(AnOver(:,1)),:);     %Delete NaN rows
+AnID(isnan(AnOver(:,2)),:) = [];   %Delete NaN rows
+AnOver = AnOver(~isnan(AnOver(:,2)),:);
+% note, use column two as stopped analyses sometimes have time data in
+% column 1, but not 2
 
-order = [[1:1:size(AnOver,1)]' AnOver(:,1)]; % check time order if multiple files were loaded
-order = sortrows(order,2);
+% sort log files, in case more than one read in
+sortLog = (1:1:size(AnOver,1))';
+sortLog(:,2) = AnOver(:,1);
+sortLog = sortrows(sortLog,2);
+for i = 1:size(AnID,1)
+    AnIDtemp(i,:) = AnID(sortLog(i,1),:);
+end
+AnOver = sortrows(AnOver,1);
+AnID = AnIDtemp;
 
-AnOver = AnOver(order(:,1),:); % reorder files
-AnID = AnID(order(:,1),:);
+% a = 0;
+% for i = 1:size(AnOver,1)
+%     if 3600*24*(AnOver(i-a,2)-AnOver(i-a,1))<5
+%         AnOver(i-a,:) = [];
+%         AnID(i-a,:) = [];
+%         a = a + 1;
+%     end
+% end
 
-a = 0;
-for i = 1:size(AnOver,1)
-    if 3600*24*(AnOver(i-a,2)-AnOver(i-a,1))<10
-        AnOver(i-a,:) = [];
-        AnID(i-a,:) = [];
-        a = a + 1;
-    end
 end
 
-end
 
 
 
 
-% Unnecessary legacy
+% probably unnecessary
 function y=roundsd(x,n,method)
 %ROUNDSD Round with fixed significant digits
 %	ROUNDSD(X,N) rounds the elements of X towards the nearest number with
